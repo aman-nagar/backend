@@ -1,3 +1,5 @@
-    # Backend series\.gitignore
-    # Ignore node_modules in all subdirectories
-    **/node_modules/
+# Backend series\.gitignore
+# Ignore node_modules in all subdirectories
+**/node_modules/
+**/package-lock.json
+**/package.json
