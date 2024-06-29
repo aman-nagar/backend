@@ -1,3 +1,4 @@
+//backend/backend_mern/04_Task/server.js
 const express = require("express");
 const app = express();
 const path = require("path");
@@ -11,13 +12,13 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
   fs.readdir(`./files`, (err, files) => {
-    console.log(files);
+    // console.log(files);
     res.render("index", { files: files });
   });
 });
 app.get("/files/:filename", (req, res) => {
   fs.readFile(`./files/${req.params.filename}`, "utf-8", (err, filedata) => {
-    console.log(filedata);
+    // console.log(filedata);
     res.render("show", {
       fileName: req.params.filename,
       fileData: filedata,
@@ -29,10 +30,14 @@ app.get("/edit/:filename", (req, res) => {
 });
 app.post("/edit", (req, res) => {
   console.log(req.body);
-  fs.rename(`./files/${req.body.previous}`, `./files/${req.body.new}`, (err) => {
-    console.log(err);
-    res.redirect("/");
-  });
+  fs.rename(
+    `./files/${req.body.previous}`,
+    `./files/${req.body.new}`,
+    (err) => {
+      console.log(err);
+      res.redirect("/");
+    }
+  );
 });
 
 app.post("/create", (req, res) => {
