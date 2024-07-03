@@ -1,3 +1,4 @@
+// 12_mini_project/app.js
 const express = require("express");
 const app = express();
 const userModel = require("./models/user");
@@ -7,14 +8,31 @@ const cookieParser = require("cookie-parser");
 const bcrypt = require("bcrypt");
 // const { hash } = require("crypto");
 const jwt = require("jsonwebtoken");
+const upload = require("./config/multerconfig");
 
 app.set("view engine", "ejs");
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser()); // for read cookie
 
 app.get("/", (req, res) => {
   res.render("index");
+});
+
+// upload profile image route
+app.get("/profile/upload", (req, res) => {
+  res.render("profileupload");
+});
+
+// upload profile image
+app.post("/upload", isLoggedIn, upload.single("image"), async (req, res) => {
+  console.log(req.file);
+  const user = await userModel.findOne({ email: req.user.email });
+  user.profilepic = req.file.filename;
+  await user.save();
+  res.redirect("/profile");
 });
 
 // login
@@ -29,9 +47,52 @@ app.get("/logout", (req, res) => {
 });
 
 // profile
-app.get("/profile", isLoggedIn, (req, res) => {
-  console.log(req.user);
-  res.send("profile");
+app.get("/profile", isLoggedIn, async (req, res) => {
+  const user = await userModel
+    .findOne({ email: req.user.email })
+    .populate("posts");
+  res.render("profile", { user });
+});
+
+// like
+app.get("/like/:id", isLoggedIn, async (req, res) => {
+  const post = await postModel.findOne({ _id: req.params.id }).populate("user");
+  if (post.likes.indexOf(req.user.userid) === -1) {
+    post.likes.push(req.user.userid);
+  } else {
+    post.likes.splice(post.likes.indexOf(req.user.userid), 1);
+  }
+  await post.save();
+  res.redirect("/profile");
+});
+
+// edit
+app.get("/edit/:id", isLoggedIn, async (req, res) => {
+  const post = await postModel.findOne({ _id: req.params.id }).populate("user");
+  res.render("edit", { post });
+});
+
+// update
+app.post("/update/:id", isLoggedIn, async (req, res) => {
+  const post = await postModel.findOneAndUpdate(
+    { _id: req.params.id },
+    { content: req.body.content }
+  );
+  res.redirect("/profile");
+});
+
+// post
+app.post("/post", isLoggedIn, async (req, res) => {
+  const user = await userModel.findOne({ email: req.user.email });
+  const { content } = req.body;
+
+  const post = await postModel.create({
+    user: user._id,
+    content,
+  });
+  user.posts.push(post.id);
+  await user.save();
+  res.redirect("/profile");
 });
 
 // register user
@@ -67,7 +128,7 @@ app.post("/login", async (req, res) => {
     if (result) {
       const token = jwt.sign({ email: email, userid: user._id }, "shhhh");
       res.cookie("token", token);
-      res.status(200).send("logged in");
+      res.status(200).redirect("/profile");
     } else {
       res.redirect("/login");
     }
@@ -77,7 +138,7 @@ app.post("/login", async (req, res) => {
 
 // protected route middleware
 function isLoggedIn(req, res, next) {
-  if (req.cookies.token === "") res.send("you must be login");
+  if (req.cookies.token === "") res.redirect("/login");
   else {
     let data = jwt.verify(req.cookies.token, "shhhh");
     req.user = data;
